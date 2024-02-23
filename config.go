@@ -1,5 +1,7 @@
 package go_swagger_ui
 
+import "strings"
+
 type configValue[T any] struct {
 	IsSet bool
 	Value T
@@ -7,6 +9,7 @@ type configValue[T any] struct {
 
 type uiConfig struct {
 	htmlTitle                string
+	basePath                 string
 	spec                     []byte
 	configURL                configValue[string]
 	specFilePath             string
@@ -54,7 +57,8 @@ var (
 type Layout string
 
 var (
-	LayoutBaseLayout Layout = "BaseLayout"
+	LayoutBaseLayout       Layout = "BaseLayout"
+	LayoutStandaloneLayout Layout = "StandaloneLayout"
 )
 
 type Preset string
@@ -266,6 +270,8 @@ func WithHTMLTitle(title string) Option {
 
 // WithLayout sets the name of a component available via the plugin system to use as the top-level
 // layout for Swagger UI.
+// Possible values are "BaseLayout" and "StandaloneLayout".
+// Default is "BaseLayout".
 func WithLayout(layout Layout) Option {
 	return func(cfg *uiConfig) {
 		cfg.layout = configValue[string]{Value: string(layout), IsSet: true}
@@ -318,5 +324,17 @@ func WithShowMutatedRequest(showMutatedRequest bool) Option {
 func WithConfigURL(configURL string) Option {
 	return func(cfg *uiConfig) {
 		cfg.configURL = configValue[string]{Value: configURL, IsSet: true}
+	}
+}
+
+// WithBasePath sets the path prefix Swagger UI is provided on the server
+// For example, if Swagger UI is provided under https://example.com/my-service/swagger-ui,
+// the base path would be "/my-service/swagger-ui"). This will allow the handler to receive
+// requests on path "my-service/swagger-ui" without a trailing slash
+// (i.e., "/my-service/swagger-ui/"). Internally, the base path will be used to set
+// a prefix for Swagger UI asset files (CSS, JavaScript, etc.).
+func WithBasePath(basePath string) Option {
+	return func(cfg *uiConfig) {
+		cfg.basePath = strings.TrimSuffix(basePath, "/") + "/"
 	}
 }

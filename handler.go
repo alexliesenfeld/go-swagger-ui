@@ -19,16 +19,18 @@ import (
 	"strings"
 )
 
-//go:embed swagger-ui/dist
+//go:embed swagger-ui/dist/*
 var swaggerUIFS embed.FS
 
-//go:embed swagger-ui/templates
+//go:embed swagger-ui/templates/*
 var templatesFS embed.FS
 
 var tplOverrides = map[string]*template.Template{
 	"index.html":             template.Must(template.ParseFS(templatesFS, "swagger-ui/templates/index.html")),
 	"swagger-initializer.js": template.Must(template.ParseFS(templatesFS, "swagger-ui/templates/swagger-initializer.js")),
 }
+
+var allFilePaths = Must(walkFS("swagger-ui/dist/", &swaggerUIFS, "."))
 
 func NewHandler(opts ...Option) http.HandlerFunc {
 	cfg := uiConfig{
@@ -45,7 +47,14 @@ func NewHandler(opts ...Option) http.HandlerFunc {
 			fileName = "index.html"
 		}
 
-		// ********************************************************************************
+		// Always serve "index.html" if a file is being asked for does not exist.
+		// These cases are usually caused by http.Handler instances that are mounted on URL paths
+		// that do not end with a slash (e.g., https://example.com/hello, in which case the
+		// file name would be "hello", although "index.html" is what is expected to be returned).
+		if _, exists := allFilePaths[fileName]; !exists {
+			fileName = "index.html"
+		}
+
 		// We reload the spec file only for the CLI. In a normal production HTTP mode
 		// "specFilePath" should be unset and not used at all. See WithSpecFilePath.
 		if cfg.specFilePath != "" && fileName == "index.html" {
@@ -59,8 +68,8 @@ func NewHandler(opts ...Option) http.HandlerFunc {
 			cfg.spec = newSpecContent
 		}
 
-		// ********************************************************************************
-		// We either load the requested file from the embed filesystem directly or rendering a template instead.
+		// We either load the requested file from the embed filesystem directly or rendering
+		// a template instead.
 		var responseBody []byte
 		if tpl, ok := tplOverrides[fileName]; ok {
 			var buf bytes.Buffer
@@ -103,12 +112,13 @@ func replaceVars(w io.Writer, tpl *template.Template, cfg *uiConfig) error {
 	}
 
 	return tpl.Execute(w, struct {
-		Spec, URL, HTMLTitle, DocExpansion, DefaultModelExpandDepth, DefaultModelsExpandDepth,
+		BasePath, Spec, URL, HTMLTitle, DocExpansion, DefaultModelExpandDepth, DefaultModelsExpandDepth,
 		DefaultModelRendering, QueryConfigEnabled, SupportedSubmitMethods, DeepLinking,
 		ShowMutatedRequest, ShowExtensions, ShowCommonExtensions, Filter, FilterString,
 		DisplayOperationId, TryItOutEnabled, DisplayRequestDuration, PersistAuthorization, WithCredentials,
 		OAuth2RedirectUrl, Layout, ValidatorURL, MaxDisplayedTags, PrimaryURL, ConfigURL, URLs string
 	}{
+		BasePath:                 cfg.basePath,
 		ConfigURL:                fromStringConfigValue(cfg.configURL),
 		Spec:                     strings.TrimSpace(escapeString(string(cfg.spec))),
 		URL:                      fromStringConfigValue(cfg.url),

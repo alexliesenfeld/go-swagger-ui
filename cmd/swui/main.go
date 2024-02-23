@@ -77,8 +77,8 @@ func newHandler(args programArguments) (http.HandlerFunc, error) {
 		swaggerui.WithShowCommonExtensions(true),
 		swaggerui.WithShowExtensions(true),
 		swaggerui.WithShowMutatedRequest(true),
-		swaggerui.WithTitle(args.specFilePath),
-		swaggerui.WithFilter(args.enableFilterBar),
+		swaggerui.WithHTMLTitle(args.specFilePath),
+		swaggerui.WithFilter(args.enableFilterBar, ""),
 	), nil
 }
 

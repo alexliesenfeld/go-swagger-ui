@@ -31,7 +31,7 @@ window.onload = function() {
     persistAuthorization: blankToUndefinedBool('{{ .PersistAuthorization }}'),
     withCredentials: blankToUndefinedBool('{{ .WithCredentials }}'),
     oauth2RedirectUrl: blankToUndefined('{{ .OAuth2RedirectUrl }}'),
-    layout: blankToUndefined('{{ .Layout }}') || "StandaloneLayout",
+    layout: blankToUndefined('{{ .Layout }}') || "BaseLayout",
     validatorUrl: blankToUndefined('{{ .ValidatorURL }}'),
     maxDisplayedTags: blankToUndefinedNumber('{{ .MaxDisplayedTags }}'),
     urls: blankToUndefinedObject('{{ .URLs }}'),
