@@ -12,7 +12,7 @@ window.onload = function() {
       SwaggerUIBundle.plugins.DownloadUrl
     ],
     configUrl: blankToUndefined('{{ .ConfigURL }}'),
-    spec: blankToUndefined('{{ .Spec }}'),
+    spec: blankToUndefined(decodeHtmlEntities('{{ .Spec }}')),
     url: blankToUndefined('{{ .URL }}'),
     docExpansion: blankToUndefined('{{ .DocExpansion }}'),
     defaultModelExpandDepth: blankToUndefinedNumber('{{ .DefaultModelExpandDepth }}'),
@@ -90,6 +90,10 @@ function blankToUndefinedObject(input) {
 }
 
 function decodeHtmlEntities(str) {
+  if (!str) {
+    return undefined
+  }
+
   const textArea = document.createElement('textarea');
   textArea.innerHTML = str;
   return textArea.value;
