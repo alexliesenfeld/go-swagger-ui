@@ -12,7 +12,7 @@ window.onload = function() {
       SwaggerUIBundle.plugins.DownloadUrl
     ],
     configUrl: blankToUndefined('{{ .ConfigURL }}'),
-    spec: blankToUndefined(decodeHtmlEntities('{{ .Spec }}')),
+    spec: parseJson(decodeBase64(blankToUndefined('{{ .Spec }}'))),
     url: blankToUndefined('{{ .URL }}'),
     docExpansion: blankToUndefined('{{ .DocExpansion }}'),
     defaultModelExpandDepth: blankToUndefinedNumber('{{ .DefaultModelExpandDepth }}'),
@@ -37,9 +37,9 @@ window.onload = function() {
     urls: blankToUndefinedObject('{{ .URLs }}'),
     "urls.primaryName": blankToUndefined('{{ .PrimaryURL }}'),
   });
-
   //</editor-fold>
 };
+
 
 function blankToUndefined(input) {
   return (input || '').trim() === '' ? undefined : input
@@ -84,17 +84,29 @@ function blankToUndefinedObject(input) {
     return undefined
   }
 
-  input = decodeHtmlEntities(input);
+  input = decodeBase64(input);
 
   return JSON.parse(input)
 }
 
-function decodeHtmlEntities(str) {
+function decodeBase64(str) {
   if (!str) {
     return undefined
   }
 
-  const textArea = document.createElement('textarea');
-  textArea.innerHTML = str;
-  return textArea.value;
+  const percentEncodedStr = atob(str || '').split('').map(c => {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join('');
+
+  return decodeURIComponent(percentEncodedStr);
 }
+
+
+function parseJson(str) {
+  if (!str) {
+    return undefined
+  }
+
+  return JSON.parse(str);
+}
+

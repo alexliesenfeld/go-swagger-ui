@@ -3,6 +3,7 @@ package go_swagger_ui
 import (
 	"bytes"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,13 +33,17 @@ var tplOverrides = map[string]*template.Template{
 
 var allFilePaths = Must(walkFS("swagger-ui/dist/", &swaggerUIFS, "."))
 
-func NewHandler(opts ...Option) http.HandlerFunc {
+func NewHandler(opts ...Option) (http.HandlerFunc, error) {
 	cfg := uiConfig{
 		htmlTitle: "Swagger UI",
 	}
 
 	for idx := range opts {
 		opts[idx](&cfg)
+	}
+
+	if len(cfg.spec) > 0 {
+		cfg.spec = Must(yamlOrJSONToJSON(cfg.spec))
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +96,7 @@ func NewHandler(opts ...Option) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", getContentType(fileName, responseBody))
 		w.Write(responseBody)
-	}
+	}, nil
 }
 
 func sendError(w http.ResponseWriter, err error) {
@@ -106,7 +111,7 @@ func sendError(w http.ResponseWriter, err error) {
 }
 
 func replaceVars(w io.Writer, tpl *template.Template, cfg *uiConfig) error {
-	urlsAsJSON, err := fromObject(cfg.urls)
+	urlsAsBase64EncodedJSON, err := marshalObject(cfg.urls)
 	if err != nil {
 		return fmt.Errorf("cannot marshal URLs: %w", err)
 	}
@@ -120,7 +125,7 @@ func replaceVars(w io.Writer, tpl *template.Template, cfg *uiConfig) error {
 	}{
 		BasePath:                 cfg.basePath,
 		ConfigURL:                fromStringConfigValue(cfg.configURL),
-		Spec:                     strings.TrimSpace(escapeString(string(cfg.spec))),
+		Spec:                     strings.TrimSpace(base64.StdEncoding.EncodeToString(cfg.spec)),
 		URL:                      fromStringConfigValue(cfg.url),
 		HTMLTitle:                cfg.htmlTitle,
 		DocExpansion:             fromDocExpansionConfigValue(cfg.docExpansion),
@@ -145,7 +150,7 @@ func replaceVars(w io.Writer, tpl *template.Template, cfg *uiConfig) error {
 		ValidatorURL:             fromStringConfigValue(cfg.validatorUrl),
 		MaxDisplayedTags:         fromIntConfigValue(cfg.maxDisplayedTags),
 		PrimaryURL:               fromStringConfigValue(cfg.urlsPrimary),
-		URLs:                     urlsAsJSON,
+		URLs:                     urlsAsBase64EncodedJSON,
 	})
 }
 
@@ -189,12 +194,6 @@ func fromBoolConfigValue(v configValue[bool]) string {
 	return ""
 }
 
-func escapeString(s string) string {
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	return s
-}
-
 func readSpecFile(path string) ([]byte, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -222,7 +221,7 @@ func getContentType(fileName string, content []byte) string {
 	return contentType
 }
 
-func fromObject(v any) (string, error) {
+func marshalObject(v any) (string, error) {
 	if v == nil {
 		return "", nil
 	}
@@ -232,5 +231,5 @@ func fromObject(v any) (string, error) {
 		return "", fmt.Errorf("cannot marshal object: %w", err)
 	}
 
-	return string(b), nil
+	return base64.StdEncoding.EncodeToString(b), nil
 }
