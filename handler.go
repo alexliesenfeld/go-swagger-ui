@@ -33,7 +33,7 @@ var tplOverrides = map[string]*template.Template{
 
 var allFilePaths = Must(walkFS("swagger-ui/dist/", &swaggerUIFS, "."))
 
-func NewHandler(opts ...Option) (http.HandlerFunc, error) {
+func NewHandler(opts ...Option) http.HandlerFunc {
 	cfg := uiConfig{
 		htmlTitle: "Swagger UI",
 	}
@@ -96,7 +96,7 @@ func NewHandler(opts ...Option) (http.HandlerFunc, error) {
 
 		w.Header().Set("Content-Type", getContentType(fileName, responseBody))
 		w.Write(responseBody)
-	}, nil
+	}
 }
 
 func sendError(w http.ResponseWriter, err error) {
